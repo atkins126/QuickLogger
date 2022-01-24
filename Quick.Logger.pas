@@ -1,13 +1,13 @@
 ﻿{ ***************************************************************************
 
-  Copyright (c) 2016-2020 Kike Pérez
+  Copyright (c) 2016-2022 Kike Pérez
 
   Unit        : Quick.Logger
   Description : Threadsafe Multi Log File, Console, Email, etc...
   Author      : Kike Pérez
   Version     : 1.42
   Created     : 12/10/2017
-  Modified    : 25/04/2020
+  Modified    : 18/01/2022
 
   This file is part of QuickLogger: https://github.com/exilon/QuickLogger
 
@@ -76,7 +76,7 @@ uses
   Quick.SysInfo;
 
 const
-  QLVERSION = '1.42';
+  QLVERSION = '1.46';
 
 type
 
@@ -129,18 +129,22 @@ type
 
   TProviderErrorEvent = procedure(const aProviderName, aError : string) of object;
 
+  {$IFNDEF DELPHIRX10_UP}
+  TThreadID = DWORD;
+  {$ENDIF}
+
   TLogItem = class
   private
     fEventType : TEventType;
     fMsg : string;
     fEventDate : TDateTime;
-    fThreadId : DWORD;
+    fThreadId : TThreadID;
   public
     constructor Create;
     property EventType : TEventType read fEventType write fEventType;
     property Msg : string read fMsg write fMsg;
     property EventDate : TDateTime read fEventDate write fEventDate;
-    property ThreadId : DWORD read fThreadId write fThreadId;
+    property ThreadId : TThreadID read fThreadId write fThreadId;
     function EventTypeName : string;
     function Clone : TLogItem; virtual;
   end;
@@ -186,7 +190,7 @@ type
     function GetVersion : string;
     function GetName : string;
     function GetQueuedLogItems : Integer;
-    {$IF DEFINED(DELPHIXE7_UP) AND NOT DEFINED(NEXTGEN)}
+    {$IF DEFINED(DELPHIXE7_UP)}// AND NOT DEFINED(NEXTGEN)}
     function ToJson(aIndent : Boolean = True) : string;
     procedure FromJson(const aJson : string);
     procedure SaveToFile(const aJsonFile : string);
@@ -374,7 +378,7 @@ type
     function GetVersion : string;
     function IsEnabled : Boolean;
     function GetName : string;
-    {$IF DEFINED(DELPHIXE7_UP) AND NOT DEFINED(NEXTGEN)}
+    {$IF DEFINED(DELPHIXE7_UP)}// AND NOT DEFINED(NEXTGEN)}
     function ToJson(aIndent : Boolean = True) : string;
     procedure FromJson(const aJson : string);
     procedure SaveToFile(const aJsonFile : string);
@@ -382,7 +386,7 @@ type
     {$ENDIF}
   end;
 
-  {$IF DEFINED(DELPHIXE7_UP) AND NOT DEFINED(NEXTGEN)}
+  {$IF DEFINED(DELPHIXE7_UP)}// AND NOT DEFINED(NEXTGEN)}
   TLogProviderList = class(TList<ILogProvider>)
   public
     function ToJson(aIndent : Boolean = True) : string;
@@ -540,6 +544,7 @@ destructor TLogProviderBase.Destroy;
 begin
   {$IFDEF LOGGER_DEBUG}
   Writeln(Format('destroy object: %s',[Self.ClassName]));
+  Writeln(Format('%s.Queue = %d',[Self.ClassName,fLogQueue.QueueSize]));
   {$ENDIF}
   if Assigned(fLogQueue) then fLogQueue.Free;
   if Assigned(fSendLimits) then fSendLimits.Free;
@@ -753,6 +758,7 @@ begin
     else if cToken = 'OSVERSION' then Result := Self.SystemInfo.OsVersion
     else if cToken = 'CPUCORES' then Result := Self.SystemInfo.CPUCores.ToString
     else if cToken = 'THREADID' then Result := cLogItem.ThreadId.ToString
+    else if cToken = 'PROCESSID' then Result := SystemInfo.ProcessId.ToString
     else Result := '%error%';
   end;
 end;
@@ -797,6 +803,7 @@ begin
   Result := '';
   idx := 1;
   st := 0;
+  et := 0;
   while st < fCustomFormatOutput.Length - 1 do
   begin
     if (fCustomFormatOutput[st] = '%') and (fCustomFormatOutput[st+1] = '{') then
@@ -911,7 +918,7 @@ begin
   {$ENDIF}
 end;
 
-{$IF DEFINED(DELPHIXE7_UP) AND NOT DEFINED(NEXTGEN)}
+{$IF DEFINED(DELPHIXE7_UP)}// AND NOT DEFINED(NEXTGEN)}
   function TLogProviderBase.ToJson(aIndent : Boolean = True) : string;
   var
     serializer : TJsonSerializer;
@@ -1147,6 +1154,9 @@ destructor TThreadProviderLog.Destroy;
 var
   IProvider : ILogProvider;
 begin
+  {$IFDEF LOGGER_DEBUG}
+  Writeln(Format('Logger.Queue = %d',[fLogQueue.QueueSize]));
+  {$ENDIF}
   //finalizes main queue
   if Assigned(fLogQueue) then fLogQueue.Free;
   //release providers
@@ -1670,7 +1680,7 @@ end;
 
 { TLogProviderList }
 
-{$IF DEFINED(DELPHIXE7_UP) AND NOT DEFINED(NEXTGEN)}
+{$IF DEFINED(DELPHIXE7_UP)}// AND NOT DEFINED(NEXTGEN)}
 function TLogProviderList.ToJson(aIndent : Boolean = True) : string;
 var
   iprovider : ILogProvider;
