@@ -1267,6 +1267,7 @@ begin
   Result.EventDate := Self.EventDate;
   Result.Msg := Self.Msg;
   TLogExceptionItem(Result).Exception := Self.Exception;
+  TLogExceptionItem(Result).StackTrace := Self.StackTrace;
 end;
 
 
@@ -1709,7 +1710,8 @@ begin
       for iprovider in Self do
       begin
         jvalue := jobject.GetValue(iprovider.GetName);
-        iprovider.FromJson(jvalue.ToJSON);
+        if Assigned(jvalue) then
+          iprovider.FromJson(jvalue.ToJSON);
       end;
     finally
       jobject.Free;
