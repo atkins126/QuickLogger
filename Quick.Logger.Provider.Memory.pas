@@ -1,13 +1,13 @@
 { ***************************************************************************
 
-  Copyright (c) 2016-2022 Kike Pérez
+  Copyright (c) 2016-2024 Kike Pérez
 
   Unit        : Quick.Logger.Provider.Memory
   Description : Log memory Provider
   Author      : Kike Pérez
   Version     : 1.23
   Created     : 02/10/2017
-  Modified    : 10/02/2022
+  Modified    : 10/10/2024
 
   This file is part of QuickLogger: https://github.com/exilon/QuickLogger
 
@@ -56,6 +56,7 @@ type
   private
     fMemLog : TMemLog;
     fMaxSize : Int64;
+    CS : TRTLCriticalSection;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -75,19 +76,16 @@ var
 
 implementation
 
-var
-  CS : TRTLCriticalSection;
-
 constructor TLogMemoryProvider.Create;
 begin
   inherited;
-  LogLevel := LOG_ALL;
-  fMaxSize := 0;
   {$IF Defined(MSWINDOWS) OR Defined(DELPHILINUX)}
   InitializeCriticalSection(CS);
   {$ELSE}
   InitCriticalSection(CS);
   {$ENDIF}
+  LogLevel := LOG_ALL;
+  fMaxSize := 0;
 end;
 
 destructor TLogMemoryProvider.Destroy;
@@ -99,9 +97,9 @@ begin
     LeaveCriticalSection(CS);
   end;
   {$IF Defined(MSWINDOWS) OR Defined(DELPHILINUX)}
-  DeleteCriticalSection(CS);
+    DeleteCriticalSection(CS);
   {$ELSE}
-  DoneCriticalsection(CS);
+    DoneCriticalsection(CS);
   {$ENDIF}
   inherited;
 end;
